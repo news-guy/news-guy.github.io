@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scraped Articles Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bookerly:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Bookerly', Georgia, 'Times New Roman', serif;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            position: relative;
+            display: flex;
+            font-weight: 500;
+            color: #000000;
+        }
+        .sidebar {
+            width: 280px;
+            background: white;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 1001;
+        }
+        .sidebar.collapsed {
+            transform: translateX(-280px);
+        }
+        .sidebar-toggle {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: rgba(44, 62, 80, 0.8);
+            color: white;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1002;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .sidebar-toggle.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .sidebar-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            background: white;
+        }
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+        .newspaper-group {
+            border-bottom: 1px solid #eee;
+        }
+        .newspaper-header {
+            padding: 8px 12px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background-color 0.2s;
+            font-size: 0.9em;
+        }
+        .newspaper-header:hover {
+            background-color: #e9ecef;
+        }
+        .newspaper-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .article-count {
+            color: #666;
+            font-size: 0.85em;
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .toggle-icon {
+            color: #666;
+            transition: transform 0.3s ease;
+            font-size: 0.8em;
+        }
+        .newspaper-group.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .newspaper-group.collapsed .article-list {
+            display: none;
+        }
+        .article-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .article-list-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .article-list-item:hover {
+            background-color: #f8f9fa;
+        }
+        .article-list-item.active {
+            background-color: #e9ecef;
+            border-left: 3px solid #2c3e50;
+        }
+        .article-list-title {
+            font-weight: bold;
+            margin-bottom: 2px;
+            color: #2c3e50;
+            font-size: 0.9em;
+            line-height: 1.3;
+        }
+        .article-list-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8em;
+            color: #666;
+        }
+        .article-list-date {
+            color: #666;
+        }
+        .article-list-source {
+            background: #e9ecef;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 0.85em;
+        }
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 0px;
+            max-width: 1200px;
+            text-align: justify;
+            transition: margin-left 0.3s ease;
+        }
+        .main-content.expanded {
+            margin-left: 0;
+        }
+        .article {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .article.active {
+            display: block;
+        }
+        .article h1 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .article-meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        .article-content {
+            color: #000000;
+            font-weight: 500;
+        }
+        .article-content p {
+            margin-bottom: 1em;
+            font-weight: 500;
+        }
+        .source {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: #495057;
+        }
+        .date {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .article-link {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .article-link:hover {
+            text-decoration: underline;
+        }
+        h1.page-title {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 15px 30px;
+            border-radius: 50px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease-in-out;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .navigation.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .nav-button {
+            background-color: rgba(44, 62, 80, 0.8);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Bookerly', sans-serif;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        .nav-button:hover {
+            background-color: rgba(52, 73, 94, 0.8);
+            transform: scale(1.1);
+        }
+        .nav-button:disabled {
+            background-color: rgba(149, 165, 166, 0.8);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .fullscreen-toggle {
+            position: fixed;
+            right: 20px;
+            bottom: 80px;
+            background: rgba(44, 62, 80, 0.8);
+            color: white;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1002;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .fullscreen-toggle.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar collapsed">
+        <div class="sidebar-header">
+            <h2>Articles</h2>
+        </div>
+        <ul class="article-list">
+            
+        </ul>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <button class="fullscreen-toggle" onclick="toggleFullscreen()">⛶</button>
+    <div class="main-content expanded">
+        
+    </div>
+    <div class="navigation">
+        <button class="nav-button" id="prevButton" onclick="showPreviousArticle()">‹</button>
+        <button class="nav-button" id="nextButton" onclick="showNextArticle()">›</button>
+    </div>
+    <script>
+        let currentArticleIndex = 0;
+        const articles = document.querySelectorAll('.article');
+        const articleListItems = document.querySelectorAll('.article-list-item');
+        let lastScrollTop = 0;
+        const navigation = document.querySelector('.navigation');
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarToggle = document.querySelector('.sidebar-toggle');
+        const mainContent = document.querySelector('.main-content');
+        
+        function showArticle(index) {
+            currentArticleIndex = index;  // Update the current index
+            articles.forEach(article => article.classList.remove('active'));
+            articleListItems.forEach(item => item.classList.remove('active'));
+            
+            articles[index].classList.add('active');
+            articleListItems[index].classList.add('active');
+            updateNavigationButtons();
+            
+            // Close sidebar when article is clicked
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('expanded');
+            
+            // Scroll to top smoothly
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+        
+        function showNextArticle() {
+            if (currentArticleIndex < articles.length - 1) {
+                currentArticleIndex++;
+                showArticle(currentArticleIndex);
+            }
+        }
+        
+        function showPreviousArticle() {
+            if (currentArticleIndex > 0) {
+                currentArticleIndex--;
+                showArticle(currentArticleIndex);
+            }
+        }
+        
+        function updateNavigationButtons() {
+            document.getElementById('prevButton').disabled = currentArticleIndex === 0;
+            document.getElementById('nextButton').disabled = currentArticleIndex === articles.length - 1;
+        }
+        
+        function toggleSidebar() {
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('expanded');
+        }
+        
+        // Handle scroll-based navigation visibility
+        window.addEventListener('scroll', function() {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const isScrollingUp = scrollTop < lastScrollTop;
+            
+            if (isScrollingUp) {
+                navigation.classList.add('visible');
+                document.querySelector('.sidebar-toggle').classList.add('visible');
+                document.querySelector('.fullscreen-toggle').classList.add('visible');
+            } else {
+                navigation.classList.remove('visible');
+                document.querySelector('.sidebar-toggle').classList.remove('visible');
+                document.querySelector('.fullscreen-toggle').classList.remove('visible');
+            }
+            
+            lastScrollTop = scrollTop;
+        });
+        
+        // Show first article on load
+        window.onload = function() {
+            showArticle(0);
+        };
+
+        // Fullscreen functionality
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                document.querySelector('.fullscreen-toggle').textContent = '⮌';
+            } else {
+                document.exitFullscreen();
+                document.querySelector('.fullscreen-toggle').textContent = '⛶';
+            }
+        }
+
+        // Toggle newspaper group collapse/expand
+        function toggleNewspaperGroup(sourceId) {
+            const group = document.getElementById(sourceId).closest('.newspaper-group');
+            group.classList.toggle('collapsed');
+        }
+    </script>
+</body>
+</html>
