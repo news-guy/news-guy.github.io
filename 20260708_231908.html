@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-ink Articles Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bookerly:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Bookerly', Georgia, 'Times New Roman', serif;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            position: relative;
+            display: flex;
+            font-weight: 500;
+            color: #000000;
+        }
+        .sidebar {
+            width: 280px;
+            background: white;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 1001;
+        }
+        .sidebar.collapsed {
+            transform: translateX(-280px);
+        }
+        .sidebar-toggle {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: rgba(44, 62, 80, 0.8);
+            color: white;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1002;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .sidebar-toggle.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .sidebar-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            background: white;
+        }
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+        .newspaper-group {
+            border-bottom: 1px solid #eee;
+        }
+        .newspaper-header {
+            padding: 8px 12px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background-color 0.2s;
+            font-size: 0.9em;
+        }
+        .newspaper-header:hover {
+            background-color: #e9ecef;
+        }
+        .newspaper-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .article-count {
+            color: #666;
+            font-size: 0.85em;
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .toggle-icon {
+            color: #666;
+            transition: transform 0.3s ease;
+            font-size: 0.8em;
+        }
+        .newspaper-group.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .newspaper-group.collapsed .article-list {
+            display: none;
+        }
+        .article-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .article-list-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .article-list-item:hover {
+            background-color: #f8f9fa;
+        }
+        .article-list-item.active {
+            background-color: #e9ecef;
+            border-left: 3px solid #2c3e50;
+        }
+        .article-list-title {
+            font-weight: bold;
+            margin-bottom: 2px;
+            color: #2c3e50;
+            font-size: 0.9em;
+            line-height: 1.3;
+        }
+        .article-list-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8em;
+            color: #666;
+        }
+        .article-list-date {
+            color: #666;
+        }
+        .article-list-source {
+            background: #e9ecef;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 0.85em;
+        }
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 0px;
+            max-width: 1200px;
+            transition: margin-left 0.3s ease;
+        }
+        .main-content.expanded {
+            margin-left: 0;
+        }
+        .article {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .article.active {
+            display: block;
+        }
+        .article h1 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .article-meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        .article-content {
+            color: #000000;
+            font-weight: 500;
+        }
+        .article-content p {
+            margin-bottom: 1em;
+            font-weight: 500;
+        }
+        .source {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: #495057;
+        }
+        .date {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .article-link {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .article-link:hover {
+            text-decoration: underline;
+        }
+        h1.page-title {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            border-radius: 50px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease-in-out;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .navigation.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .nav-button {
+            background-color: rgba(44, 62, 80, 0.8);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Bookerly', sans-serif;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        .nav-button:hover {
+            background-color: rgba(52, 73, 94, 0.8);
+            transform: scale(1.1);
+        }
+        .nav-button:disabled {
+            background-color: rgba(149, 165, 166, 0.8);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .fullscreen-toggle {
+            position: fixed;
+            right: 20px;
+            bottom: 80px;
+            background: rgba(44, 62, 80, 0.8);
+            color: white;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1002;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .fullscreen-toggle.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .font-size-controls {
+            position: fixed;
+            right: 20px;
+            bottom: 140px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1002;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+        .font-size-controls.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .font-button {
+            background: rgba(44, 62, 80, 0.8);
+            color: white;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+        .font-button:hover {
+            background-color: rgba(52, 73, 94, 0.8);
+            transform: scale(1.1);
+        }
+        .page-nav-controls {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 1002;
+        }
+        .page-nav-button {
+            background: rgba(182 182 182 / 0);
+            color: white;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .page-nav-button:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar collapsed">
+        <div class="sidebar-header">
+            <h2>Articles</h2>
+        </div>
+        <ul class="article-list">
+            <div class="newspaper-group">
+    <div class="newspaper-header" onclick="toggleNewspaperGroup('new-scientist')">
+        <span class="newspaper-name">New Scientist</span>
+        <span class="article-count">(3 articles)</span>
+        <span class="toggle-icon">▼</span>
+    </div>
+    <ul class="article-list" id="new-scientist">
+        <li class="article-list-item" onclick="showArticle(0)">
+    <div class="article-list-title">The allergy culprit histamine also boosts our memory</div>
+    <div class="article-list-meta">
+        <span class="article-list-date">July 08, 2026</span>
+        <span class="article-list-source">New Scientist</span>
+    </div>
+</li>
+<li class="article-list-item" onclick="showArticle(1)">
+    <div class="article-list-title">How extreme heat affects the body – and the best ways to cope</div>
+    <div class="article-list-meta">
+        <span class="article-list-date">July 08, 2026</span>
+        <span class="article-list-source">New Scientist</span>
+    </div>
+</li>
+<li class="article-list-item" onclick="showArticle(2)">
+    <div class="article-list-title">Salt batteries are about to shake up EVs and grid storage</div>
+    <div class="article-list-meta">
+        <span class="article-list-date">July 07, 2026</span>
+        <span class="article-list-source">New Scientist</span>
+    </div>
+</li>
+    </ul>
+</div>
+        </ul>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <div class="font-size-controls">
+        <button class="font-button" onclick="changeFontSize(1)">A+</button>
+        <button class="font-button" onclick="changeFontSize(-1)">A-</button>
+    </div>
+    <div class="page-nav-controls">
+        <button class="page-nav-button" onclick="pageUp()">↑</button>
+        <button class="page-nav-button" onclick="pageDown()">↓</button>
+    </div>
+    <button class="fullscreen-toggle" onclick="toggleFullscreen()">⛶</button>
+    <div class="main-content expanded">
+        <article class="article">
+    <h1>The allergy culprit histamine also boosts our memory</h1>
+    <div class="article-meta">
+        <span class="source">New Scientist</span>
+        <span class="date">July 08, 2026</span>
+    </div>
+    <div class="article-content">
+        <p>8 July 2026</p><p></p><p></p><p>In most of the body, histamine triggers an immune response, as people with hay fever know only too well. But in the brain, it seems to have a completely different role, with a small experiment demonstrating that boosting histamine levels improves the accuracy of our memory by around 10 per cent.</p><p>“We think it’s changing something called novelty-linked arousal,” says Michael Colwell at the University of Oxford. “So, how alert we feel when we see new things in the environment.”</p><p></p><p></p><p>It’s long been known that there are receptors in the brain for detecting histamine. “They are densely packed around areas of the brain which are involved in learning and memory,” says Colwell. Animal studies support the idea that histamine is involved in learning.</p><p>This might explain some of the memory-related side effects of early antihistamine drugs, says Colwell. “A lot of those older ones got into the brain,” he says. “They would have made people less able to remember things, which you often see when people were taking those antihistamines for a long time.”</p><p>But what happens if the levels of histamine in the brain increase? There hadn’t been a way of testing this in people, but Colwell and his colleagues realised an existing drug used to treat narcolepsy, called pitolisant, has this effect. It binds to what are known as histamine 3 receptors and raises the molecule’s levels throughout the brain, he says.</p><p>To put it to the test, his team recruited 60 volunteers and gave half of them pitolisant and half a placebo. They then imaged their brains in an MRI scanner while they did various memory tests. The scans showed that in those given pitolisant, there was greater connectivity between the parts of the brain where histamine is made and the hippocampus, an area involved in memory. These people were also 11 per cent more accurate in retrieving information learned while they were in the scanner.</p><p>But it would be a mistake to try to use pitolisant as a “smart drug”, says Colwell. “I would imagine it’s going to really affect sleep, and that’s going to make your memory much worse in the long term.”</p><p>Roland Seifert at Hannover Medical School in Germany says there’s little danger of pistolisant being abused as a smart drug, as it should be very difficult for people to get hold of. He adds that the findings confirm that the results in non-human animals apply to people, too, and that this may boost interest in treating various brain conditions by targeting histamine receptors.</p><p></p><p></p><p>People who take pitolisant to help treat narcolepsy or a genetic condition called Prader-Willi syndrome have previously reported improved attention and alertness, says Holger Stark at Heinrich Heine University in Düsseldorf, Germany, who helped create the drug. “A recurring finding has been that pitolisant can help restore impaired cognitive function and improve attention when these are compromised by disease,” he says. “In most cases, however, the effect has been to normalise impaired function rather than to enhance cognition beyond normal levels.”</p><p>The fact that histamine has two such different effects in the body also shows how evolution repurposes things. “I think the bigger picture is that this shows how economical the human body is,” says Colwell.</p><p></p><p>Journal reference:</p><p>Nature Communications DOI: 10.1038/s41467-026-73865-9</p><p></p><p></p><p>Are you a vivid imaginer, or do you see nothing with your mind’s eye? Do you struggle to remember faces, or lack an internal monologue? This talk reveals new insights into the different ways we see, perceive, and process the world, highlighting the diversity of human imagination and how it shapes creativity, memory, problem‑solving, and mental health. The session will include interactive tests and audience participation, and each attendee will leave with a new insight into what makes their mind unique.</p><p></p><p></p>
+    </div>
+    <p><a href="https://www.newscientist.com/article/2533166-the-allergy-culprit-histamine-also-boosts-our-memory/?utm_campaign=RSS%7CNSNS&utm_source=NSNS&utm_medium=RSS&utm_content=home" class="article-link" target="_blank">Read original article</a></p>
+</article>
+<article class="article">
+    <h1>How extreme heat affects the body – and the best ways to cope</h1>
+    <div class="article-meta">
+        <span class="source">New Scientist</span>
+        <span class="date">July 08, 2026</span>
+    </div>
+    <div class="article-content">
+        <p>8 July 2026</p><p></p><p></p><p>The heatwave that hit Europe at the end of June was the hottest ever and came less than a month after another record-breaking heatwave in May. Now, another heatwave has started that is forecast to last even longer, bringing temperatures of up to 34°C (93°F) to the UK.</p><p>To better understand the impacts of this heat, I visited the University of Brighton’s Environmental Extremes Laboratory, just across a field from the stadium of Brighton and Hove Albion Football Club, which has worked with the lab to assess players’ fitness. Spending just 10 minutes in a heat chamber was enough to show that as heatwaves get more frequent and intense, I’m not prepared – and you probably aren’t, either.</p><p></p><p></p><p>The heat chamber is a windowed room where researchers can control temperature, moisture and oxygen content, recreating the ambient conditions found at Mexico City’s high-elevation World Cup stadium or in a European city during a heatwave.</p><p>“[Heatwaves] are here to stay, and we’ve got to help people get used to preparing for heatwaves and dealing with it, not on an off-chance, but on a regular, every-year basis, on multiple occasions,” said lab director Neil Maxwell during my visit.</p><p>On a dial outside the door, Maxwell and his colleagues set the temperature to 35°C (95°F) and the humidity to 50 per cent, similar to London during the June heatwave. They measured my heart rate and blood oxygen level with a fingertip pulse monitor and my skin temperature with an infrared thermometer pistol. They also asked me to rate how hot I felt and my level of exertion.</p><p>As we entered the chamber, the heat hit me like a wall, and I had a twinge of nervousness. What was I about to expose myself to in the name of science?</p><p>To simulate moving around outside, the researchers had me start walking on a treadmill set to a 1 per cent incline. I began to sweat, but because the high humidity was slowing evaporation, it didn’t cool me down much. In the oppressive heat, even this moderate walk became taxing.</p><p>After 5 minutes, the thermometer showed my skin temperature had risen from 33°C to more than 36°C. My body was shunting warm blood from my core to my skin to try to shed heat, explained Maxwell.</p><p></p><p></p><p>My heart rate had also jumped, from 72 beats per minute to 81 beats per minute. As I sweated out water, my blood was thickening, forcing my heart to pump harder.</p><p>After 10 minutes of plodding, I was feeling tired, and my heart rate had reached 95 beats per minute. I felt light-headed as Maxwell helped me off the treadmill and into a chair outside the chamber.</p><p>I asked him how I’d done. “You’re not heat-adapted,” he said. Even relatively healthy people can be at risk, he added.</p><p>Maxwell handed me a strawberry ice pop, which not only tasted heavenly, but also started cooling my body from the inside. Then he had me plunge my hands into a tub of cold water. The hands, feet and ears have dense concentrations of arteries, veins and capillaries. Targeting those areas can cool large flows of blood.</p><p>“We get people’s temperature to drop so much quicker by using that method,” said Maxwell.</p><p></p><p></p><p>Simple actions like taking a cool shower – not too cold, or the blood vessels will constrict – can be surprisingly effective. But surveys Maxwell and colleagues are doing show that only a small fraction of the UK population takes measures for protection from the heat. He pointed out that I had come without a water bottle, even though it was a warm day.</p><p>In the long term, we need to teach people how to improve their bodies’ heat tolerance, according to Maxwell. To start with, aerobic exercise like jogging makes your heart better at moving blood to the skin. Then there’s heat exposure. A one-person sauna tent was standing off to the side of the lab. Regular sauna sessions can teach your blood vessels to dilate quickly and your skin to sweat more. Your sweat even gets less salty, preserving your electrolyte levels.</p><p>“The narrative at the moment is [that] we’ve got to get rid of heat; heat is bad, bad, bad,” said Maxwell. “I think we need to change that narrative to: safe heat can actually be therapeutic.”</p><p>After I got home, my head hurt, and I felt hot and thirsty. I decided I need to go to the sauna more. As for the jogging, well, I’ll work on it.</p><p></p><p>There is no sugar-coating the problems we face, and in this special session we present an emergency briefing on the nature and climate crisis from three of the world's leading scientists: Nathalie Seddon, Kevin Anderson and Paul Behrens. Hosted by <em>New Scientist</em> podcast editor Rowan Hooper.</p><p></p><p></p>
+    </div>
+    <p><a href="https://www.newscientist.com/article/2533216-how-extreme-heat-affects-the-body-and-the-best-ways-to-cope/?utm_campaign=RSS%7CNSNS&utm_source=NSNS&utm_medium=RSS&utm_content=home" class="article-link" target="_blank">Read original article</a></p>
+</article>
+<article class="article">
+    <h1>Salt batteries are about to shake up EVs and grid storage</h1>
+    <div class="article-meta">
+        <span class="source">New Scientist</span>
+        <span class="date">July 07, 2026</span>
+    </div>
+    <div class="article-content">
+        <p>7 July 2026</p><p></p><p></p><p>On 5 February, a black sedan was speeding down an icy track in northern China at 95 kilometres per hour when its tyre burst, releasing a puff of white into the -32°C air. The car coasted to a stop without spinning into the snow. This was meant to demonstrate that even the harshest conditions were no barrier to the auto-maker Changan’s new line of electric vehicles, which includes the first mass-produced EV with a sodium-ion battery.</p><p>Changan’s Nevo AO6 model is expected to hit the market later this year with a new, more powerful generation of sodium-ion batteries made by energy storage giant CATL.</p><p></p><p></p><p>While most rechargeable batteries are made from lithium, a critical mineral, this kind of battery is made from salt, a much more abundant – and therefore cheaper – material. If sodium-ion batteries can perform almost as well at a lower price, they could challenge lithium’s dominance. And that could pave the way for other kinds of batteries, so that someday each type of device might have its own preferred battery chemistry.</p><p>“This is just the start of the battery revolution, in which we are going to see a plethora of new batteries coming to the market and targeting special segments,” says Maria Crespo-Ribadeneyra at Queen Mary University of London. “Sodium is the pioneer that can prove that a world beyond lithium is possible.”</p><p>While a predecessor of the sodium-ion battery was created by the firm Ford in 1966, companies only began to seriously develop the technology in the past 15 years, as electrification of the power grid and automobiles hiked demand for lithium-ion batteries. It works the same way, but sodium, rather than lithium, is dissolved in the electrolyte, and the electrodes are different compounds.</p><p>But because sodium is three times heavier than lithium, sodium-ion batteries with the same storage capacity weigh more. Their potential was long seen as limited to electricity grid storage, since the extra bulk doesn’t matter at a large facility, or to mini EVs with a small battery range.</p><p>A handful of sodium-ion grid storage plants have been built in China, Germany and the US. General Motors, the largest US auto-maker, just partnered with the start-up Peak Energy to build more. Peak Energy is also selling sodium-ion batteries to data centres, which can use them to store electricity at times of day when it is cheap. The company Eleven Energy has also started installing sodium-ion home batteries in the UK.</p><p>Now, sodium-ion specs have improved to the point that the technology could break into the general EV market. A recent study by Moritz Schütte at Aachen University in Germany and his colleagues found that a sodium-ion battery by the manufacturer Hina rivals Tesla’s lithium-ion batteries on most parameters, although it would still be a third heavier.</p><p>But CATL claims its sodium-ion battery has an energy density of 175 watt-hours per kilogram, which can compete with the lithium-iron-phosphate batteries in low-cost models from Tesla and others. And while sodium-ion batteries still haven’t quite beaten lithium batteries on price, that could change as they expand, according to Schütte.</p><p>“The ramp-up of the sodium-ion batteries is fast,” he says. “That means the production cost is getting lower and lower. The materials are getting more advanced with every generation. We don’t know where it ends, at which energy density.”</p><p></p><p></p><p>Sodium has other advantages, too. Lithium processing is energy-intensive and often has a large carbon footprint. China controls most of this industry, and supplies could be disrupted in a geopolitical conflict, such as over Taiwan. What’s more, at sub-zero temperatures, lithium ions move through the electrolyte more slowly, which is why phones lose charge in the cold. In the heat, lithium electrolyte can erupt in flames or explode.</p><p>But sodium ions generate less heat in electrochemical reactions, reducing fire risk, so less money can be spent on cooling. They also form weaker bonds with the electrolyte, so they don’t slow down as much in the cold.</p><p>At the launch in freezing northern China, CATL said its sodium-ion EV battery retains 90 per cent capacity at -40°C (-40°F). When the battery was sawed in half, it didn’t catch fire and even continued to power a lightbulb.</p><p>Elliot Richards, a Shanghai-based EV vlogger who attended the launch, calls the sodium-ion battery the “lithium killer”. While high-end cars are likely to continue with lithium, sodium could dominate budget EVs, models for hot and cold climates, cargo lorries, and grid and home energy storage, he says.</p><p>“We’re all underestimating probably how much this will impact everyone’s daily lives,” he says. “It’s going to be a lot cheaper to own [an EV] than a combustion car; it’s going to be a lot cheaper to get batteries into your home; it’s going to be a lot cheaper for the energy provider to deliver energy to your house.”</p>
+    </div>
+    <p><a href="https://www.newscientist.com/article/2532997-salt-batteries-are-about-to-shake-up-evs-and-grid-storage/?utm_campaign=RSS%7CNSNS&utm_source=NSNS&utm_medium=RSS&utm_content=home" class="article-link" target="_blank">Read original article</a></p>
+</article>
+    </div>
+    <div class="navigation">
+        <button class="nav-button" id="prevButton" onclick="showPreviousArticle()">‹</button>
+        <button class="nav-button" id="nextButton" onclick="showNextArticle()">›</button>
+    </div>
+    <script>
+        let currentArticleIndex = 0;
+        const articles = document.querySelectorAll('.article');
+        const articleListItems = document.querySelectorAll('.article-list-item');
+        let lastScrollTop = 0;
+        const navigation = document.querySelector('.navigation');
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarToggle = document.querySelector('.sidebar-toggle');
+        const mainContent = document.querySelector('.main-content');
+        
+        function showArticle(index) {
+            currentArticleIndex = index;  // Update the current index
+            articles.forEach(article => article.classList.remove('active'));
+            articleListItems.forEach(item => item.classList.remove('active'));
+            
+            articles[index].classList.add('active');
+            articleListItems[index].classList.add('active');
+            updateNavigationButtons();
+            
+            // Close sidebar when article is clicked
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('expanded');
+            
+            // Scroll to top smoothly
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+        
+        function showNextArticle() {
+            if (currentArticleIndex < articles.length - 1) {
+                currentArticleIndex++;
+                showArticle(currentArticleIndex);
+            }
+        }
+        
+        function showPreviousArticle() {
+            if (currentArticleIndex > 0) {
+                currentArticleIndex--;
+                showArticle(currentArticleIndex);
+            }
+        }
+        
+        function updateNavigationButtons() {
+            document.getElementById('prevButton').disabled = currentArticleIndex === 0;
+            document.getElementById('nextButton').disabled = currentArticleIndex === articles.length - 1;
+        }
+        
+        function toggleSidebar() {
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('expanded');
+        }
+        
+        // Handle scroll-based navigation visibility
+        window.addEventListener('scroll', function() {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const isScrollingUp = scrollTop < lastScrollTop;
+            
+            if (isScrollingUp) {
+                navigation.classList.add('visible');
+                document.querySelector('.sidebar-toggle').classList.add('visible');
+                document.querySelector('.fullscreen-toggle').classList.add('visible');
+                document.querySelector('.font-size-controls').classList.add('visible');
+            } else {
+                navigation.classList.remove('visible');
+                document.querySelector('.sidebar-toggle').classList.remove('visible');
+                document.querySelector('.fullscreen-toggle').classList.remove('visible');
+                document.querySelector('.font-size-controls').classList.remove('visible');
+            }
+            
+            lastScrollTop = scrollTop;
+        });
+        
+        // Show first article on load
+        window.onload = function() {
+            showArticle(0);
+        };
+
+        // Fullscreen functionality
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                document.querySelector('.fullscreen-toggle').textContent = '⮌';
+            } else {
+                document.exitFullscreen();
+                document.querySelector('.fullscreen-toggle').textContent = '⛶';
+            }
+        }
+
+        // Toggle newspaper group collapse/expand
+        function toggleNewspaperGroup(sourceId) {
+            const group = document.getElementById(sourceId).closest('.newspaper-group');
+            group.classList.toggle('collapsed');
+        }
+
+        // Font size adjustment
+        let currentFontSize = 100; // 100% is default
+        function changeFontSize(change) {
+            currentFontSize += change * 10; // Change by 10% increments
+            currentFontSize = Math.max(70, Math.min(150, currentFontSize)); // Limit between 70% and 150%
+            document.querySelectorAll('.article-content').forEach(content => {
+                content.style.fontSize = `${currentFontSize}%`;
+            });
+        }
+        
+        // Page navigation
+        function pageDown() {
+            window.scrollBy({
+                top: window.innerHeight * 0.8,
+                behavior: 'smooth'
+            });
+        }
+        
+        function pageUp() {
+            window.scrollBy({
+                top: -window.innerHeight * 0.8,
+                behavior: 'smooth'
+            });
+        }
+    </script>
+</body>
+</html>
