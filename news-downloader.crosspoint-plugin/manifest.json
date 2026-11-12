@@ -1,0 +1,8 @@
+{
+  "name": "news-downloader",
+  "title": "Daily News",
+  "description": "Download the latest Daily News EPUB from news-guy.github.io",
+  "author": "news-guy",
+  "version": "1.0.0",
+  "files": ["manifest.json", "device.json", "config.json"]
+}

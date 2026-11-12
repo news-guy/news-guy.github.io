@@ -1,0 +1,58 @@
+name: Update CrossInk news catalog
+
+# Daily edition pushes are tagged [skip ci], which suppresses push triggers,
+# so the schedule is what normally picks up a new edition.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - "**.epub"
+      - "scripts/build_crossink_catalog.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crossink-catalog
+  cancel-in-progress: false
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    steps:
+      # Sparse, blobless checkout: the catalog is built from the GitHub tree API,
+      # so the job never downloads the EPUB archive.
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            scripts
+            crossink
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Build catalog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/build_crossink_catalog.py --branch "${GITHUB_REF_NAME}"
+
+      - name: Commit catalog
+        run: |
+          if git diff --quiet -- crossink/catalog.json && git ls-files --error-unmatch crossink/catalog.json >/dev/null 2>&1; then
+            echo "Catalog unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898341+github-actions[bot]@users.noreply.github.com"
+          git add crossink/catalog.json
+          git commit -m "Update CrossInk news catalog [skip ci]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((attempt * 10))
+          done
+          exit 1

@@ -1,0 +1,16 @@
+{
+  "title": "Daily News",
+  "description": "Newest editions first",
+  "config": { "file": "config.json" },
+  "browse": {
+    "url": "https://raw.githubusercontent.com/news-guy/news-guy.github.io/main/crossink/catalog.json",
+    "items": "books",
+    "fields": { "title": "title", "author": "author", "id": "id", "url": "url" },
+    "page_size": 8
+  },
+  "download": {
+    "url": "{url}",
+    "dest_dir": "/news",
+    "filename": "{id}.epub"
+  }
+}
