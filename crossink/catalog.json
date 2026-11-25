@@ -2,6 +2,12 @@
   "title": "Daily News",
   "books": [
     {
+      "id": "DailyNews_2026-11-25",
+      "title": "Daily News - Wed 25 Nov 2026",
+      "author": "761 KB",
+      "url": "https://raw.githubusercontent.com/news-guy/news-guy.github.io/main/DailyNews_2026-11-25.epub"
+    },
+    {
       "id": "DailyNews_2026-11-24",
       "title": "Daily News - Tue 24 Nov 2026",
       "author": "803 KB",
@@ -174,12 +180,6 @@
       "title": "Daily News - Tue 27 Oct 2026",
       "author": "767 KB",
       "url": "https://raw.githubusercontent.com/news-guy/news-guy.github.io/main/DailyNews_2026-10-27.epub"
-    },
-    {
-      "id": "DailyNews_2026-10-26",
-      "title": "Daily News - Mon 26 Oct 2026",
-      "author": "708 KB",
-      "url": "https://raw.githubusercontent.com/news-guy/news-guy.github.io/main/DailyNews_2026-10-26.epub"
     }
   ]
 }
